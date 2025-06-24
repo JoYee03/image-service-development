@@ -1,0 +1,47 @@
+name: Deploy to Firebase on Tag
+
+on:
+  push:
+    tags:
+      - '*'
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v3
+
+    - name: Set up Go
+      uses: actions/setup-go@v4
+      with:
+        go-version: 1.21
+
+    - name: Set up gcloud
+      uses: google-github-actions/setup-gcloud@v2
+      with:
+        project_id: ${{ secrets.GCP_CREDENTIALS }}
+        service_account_key: ${{ secrets.GCP_SA_KEY }}
+        export_default_credentials: true
+
+    - name: Deploy testImageUpload Function
+      run: |
+        gcloud functions deploy testImageUpload \
+          --gen2 \
+          --runtime go121 \
+          --region asia-southeast1 \
+          --entry-point TestImageUpload \
+          --source . \
+          --trigger-http \
+          --allow-unauthenticated
+
+    - name: Deploy testWatermarkImage Function
+      run: |
+        gcloud functions deploy testWatermarkImage \
+          --gen2 \
+          --runtime go121 \
+          --region asia-southeast1 \
+          --entry-point TestWatermarkImage \
+          --source . \
+          --trigger-http \
+          --allow-unauthenticated

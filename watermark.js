@@ -1,17 +1,37 @@
 const sharp = require('sharp');
 
+// Input files
+const IMAGE_PATH = 'temp-image.jpg';
+const WATERMARK_PATH = 'temp-watermark.jpg';
+const OUTPUT_PATH = 'output.jpg';
+
 (async () => {
   try {
-    await sharp('temp-image.png')
-      .composite([{
-        input: 'temp-watermark.png',
-        gravity: 'southeast'
-      }])
-      .toFile('output.png');
+    const image = sharp(IMAGE_PATH);
+    const watermark = await sharp(WATERMARK_PATH).toBuffer();
 
-    console.log("Watermark applied successfully");
-  } catch (err) {
-    console.error("Sharp error:", err);
+    const { width: imgWidth, height: imgHeight } = await image.metadata();
+    const { width: wmWidth, height: wmHeight } = await sharp(watermark).metadata();
+
+    if (!imgWidth || !imgHeight || !wmWidth || !wmHeight) {
+      throw new Error('Error reading image or watermark size.');
+    }
+
+    // Repeat watermark across image
+    const compositeArray = [];
+    for (let y = 0; y < imgHeight; y += wmHeight) {
+      for (let x = 0; x < imgWidth; x += wmWidth) {
+        compositeArray.push({ input: watermark, left: x, top: y });
+      }
+    }
+
+    await image
+      .composite(compositeArray)
+      .toFile(OUTPUT_PATH);
+
+    console.log('Watermarking complete.');
+  } catch (error) {
+    console.error('Error in watermark.js:', error.message);
     process.exit(1);
   }
 })();

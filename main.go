@@ -6,20 +6,18 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"log"
-	"net/http"
 	"io"
-	"os/exec"
+	"net/http"
 	"os"
+	"os/exec"
 	"time"
 
 	firebase "firebase.google.com/go/v4"
-	"google.golang.org/api/option"
 )
 
 type UploadRequest struct {
-	Content string `json:"content"`
-	Type    string `json:"type"`
+	Content  string `json:"content"`
+	Type     string `json:"type"`
 	Filename string `json:"filename"`
 }
 
@@ -31,7 +29,7 @@ type UploadResponse struct {
 type WatermarkRequest struct {
 	ImagePath     string `json:"image_path"`
 	WatermarkPath string `json:"watermark_path"`
-	Filename string `json:"filename"`
+	Filename      string `json:"filename"`
 }
 
 type WatermarkResponse struct {
@@ -39,18 +37,15 @@ type WatermarkResponse struct {
 	Success bool   `json:"success"`
 }
 
-// firebase initialization
 func initFirebase(ctx context.Context) (*firebase.App, error) {
-	opt := option.WithCredentialsFile("firebase-service-account.json")
-	app, err := firebase.NewApp(ctx, nil, opt)
+	app, err := firebase.NewApp(ctx, nil)
 	if err != nil {
-		return nil, fmt.Errorf("Firebase init error: %v", err)
+		return nil, fmt.Errorf("error initializing Firebase: %w", err)
 	}
 	return app, nil
 }
 
-// image upload handler
-func uploadHandler(w http.ResponseWriter, r *http.Request) {
+func TestImageUpload(w http.ResponseWriter, r *http.Request) {
 	ctx := context.Background()
 
 	app, err := initFirebase(ctx)
@@ -83,10 +78,11 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-		objectPath := req.Filename
+	objectPath := req.Filename
 	if objectPath == "" {
-		objectPath = fmt.Sprintf("image/%d/uploaded-%d.png", time.Now().Year(), time.Now().Unix())
+		objectPath = fmt.Sprintf("image/%d/uploaded-%d.jpg", time.Now().Year(), time.Now().Unix())
 	}
+
 	writer := bucket.Object(objectPath).NewWriter(ctx)
 	defer writer.Close()
 	writer.ContentType = req.Type
@@ -102,8 +98,7 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// watermark handler
-func watermarkHandler(w http.ResponseWriter, r *http.Request) {
+func TestWatermarkImage(w http.ResponseWriter, r *http.Request) {
 	ctx := context.Background()
 
 	app, err := initFirebase(ctx)
@@ -130,7 +125,6 @@ func watermarkHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// download image and watermark
 	imageData, err := downloadFile(ctx, bucket, req.ImagePath)
 	if err != nil {
 		http.Error(w, "Error downloading image: "+err.Error(), http.StatusInternalServerError)
@@ -143,40 +137,41 @@ func watermarkHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// save to temporary files
-	if err := os.WriteFile("temp-image.png", imageData, 0644); err != nil {
+	if err := os.WriteFile("temp-image.jpg", imageData, 0644); err != nil {
 		http.Error(w, "Error saving temp image: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
-	defer os.Remove("temp-image.png")
+	defer os.Remove("temp-image.jpg")
 
-	if err := os.WriteFile("temp-watermark.png", watermarkData, 0644); err != nil {
+	if err := os.WriteFile("temp-watermark.jpg", watermarkData, 0644); err != nil {
 		http.Error(w, "Error saving temp watermark: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
-	defer os.Remove("temp-watermark.png")
+	defer os.Remove("temp-watermark.jpg")
 
 	cmd := exec.Command("node", "watermark.js")
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
-
 	if err := cmd.Run(); err != nil {
 		http.Error(w, "Watermarking failed: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
-	defer os.Remove("output.png")
+	defer os.Remove("output.jpg")
 
-	// upload watermarked image
-	outputData, err := os.ReadFile("output.png")
+	outputData, err := os.ReadFile("output.jpg")
 	if err != nil {
 		http.Error(w, "Error reading output: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	outputPath := fmt.Sprintf("image/%d/watermarked-%d.png", time.Now().Year(), time.Now().Unix())
+	outputPath := req.Filename
+	if outputPath == "" {
+		outputPath = fmt.Sprintf("image/%d/watermarked-%d.jpg", time.Now().Year(), time.Now().Unix())
+	}
+
 	writer := bucket.Object(outputPath).NewWriter(ctx)
 	defer writer.Close()
-	writer.ContentType = "image/png"
+	writer.ContentType = "image/jpg"
 
 	if _, err := writer.Write(outputData); err != nil {
 		http.Error(w, "Upload failed: "+err.Error(), http.StatusInternalServerError)
@@ -187,10 +182,8 @@ func watermarkHandler(w http.ResponseWriter, r *http.Request) {
 		Path:    outputPath,
 		Success: true,
 	})
-
 }
 
-// helper: download file from firebase storage
 func downloadFile(ctx context.Context, bucket *storage.BucketHandle, path string) ([]byte, error) {
 	reader, err := bucket.Object(path).NewReader(ctx)
 	if err != nil {
@@ -205,20 +198,18 @@ func downloadFile(ctx context.Context, bucket *storage.BucketHandle, path string
 	return data, nil
 }
 
-// main function
 func main() {
-    // handler for the home page
-    http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-        fmt.Fprintf(w, "Welcome to iCARES Image Service \n\nAvailable endpoints:\n- POST /testImageUpload\n- POST /testWatermarkImage\n")
-    })
+	http.HandleFunc("/testImageUpload", TestImageUpload)
+	http.HandleFunc("/testWatermarkImage", TestWatermarkImage)
 
-    http.HandleFunc("/testImageUpload", uploadHandler)
-    http.HandleFunc("/testWatermarkImage", watermarkHandler)
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "8080"
+	}
 
-    port := os.Getenv("PORT")
-    if port == "" {
-        port = "8080"
-    }
-    log.Printf("Server started on port %s", port)
-    log.Fatal(http.ListenAndServe(":"+port, nil))
+	fmt.Println("Listening on port", port)
+	if err := http.ListenAndServe(":"+port, nil); err != nil {
+		fmt.Fprintf(os.Stderr, "Server failed to start: %v\n", err)
+		os.Exit(1)
+	}
 }

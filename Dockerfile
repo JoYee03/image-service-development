@@ -1,37 +1,34 @@
-# ========== Build Stage ==========
-FROM golang:1.24 AS builder
+# ---------- Build Stage ----------
+FROM golang:1.24.4 AS builder
 WORKDIR /app
 
-# Copy Go mod files and download dependencies
+# Copy and download dependencies
 COPY go.mod go.sum ./
 RUN go mod download
 
-# Copy the rest of the source
+# Copy source code and build the Go binary
 COPY . .
-
-# Build the Go binary
 RUN go build -o image-service main.go
 
-# ========== Deploy Stage ==========
+# ---------- Runtime Stage ----------
 FROM debian:12-slim
-
-# Install node.js and npm so we can run watermark.js with sharp
-RUN apt-get update && apt-get install -y nodejs npm \
-    && rm -rf /var/lib/apt/lists/*
-
-# Set work dir
 WORKDIR /app
 
+# Install Node.js and Sharp
+RUN apt-get update && \
+    apt-get install -y nodejs npm python3 g++ make && \
+    npm install sharp && \
+    apt-get remove -y python3 g++ make && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
+
 # Copy Go binary and other files
-COPY --from=builder /app/image-service /app/image-service
-COPY firebase-service-account.json /app/firebase-service-account.json
-COPY watermark.js /app/watermark.js
+COPY --from=builder /app/image-service .
+COPY watermark.js .
+COPY firebase-service-account.json .
 
-# Install sharp
-RUN npm init -y && npm install sharp
-
-# Expose port (Cloud Run expects this)
+# Set port
 ENV PORT=8080
 
-# Run the Go binary
-CMD ["/app/image-service"]
+# Start the Go binary
+CMD ["./image-service"]

@@ -1,0 +1,33 @@
+name: Deploy to Cloud Run on Tag
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Google Cloud CLI
+        uses: google-github-actions/setup-gcloud@v2
+        with:
+          service_account_key: ${{ secrets.GCP_SA_KEY }}
+          project_id: ${{ secrets.GCP_PROJECT_ID }}
+          export_default_credentials: true
+
+      - name: Build and push Docker image
+        run: |
+          gcloud builds submit --tag gcr.io/${{ secrets.GCP_PROJECT_ID }}/image-service
+
+      - name: Deploy to Cloud Run
+        run: |
+          gcloud run deploy image-service-development \
+            --image gcr.io/${{ secrets.GCP_PROJECT_ID }}/image-service \
+            --platform managed \
+            --region asia-southeast1 \
+            --allow-unauthenticated

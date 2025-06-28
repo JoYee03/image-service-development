@@ -8,7 +8,9 @@ const OUTPUT_PATH = 'output.jpg';
 (async () => {
   try {
     const image = sharp(IMAGE_PATH);
-    const watermark = await sharp(WATERMARK_PATH).toBuffer();
+    const watermark = await sharp(WATERMARK_PATH)
+    .resize({ width: 100, height: 100 })
+    .toBuffer();
 
     const { width: imgWidth, height: imgHeight } = await image.metadata();
     const { width: wmWidth, height: wmHeight } = await sharp(watermark).metadata();

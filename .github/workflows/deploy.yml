@@ -17,6 +17,9 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Create firebase-service-account.json
+        run: echo "${{ secrets.GCP_SA_KEY }}" > firebase-service-account.json
+
       - name: Authenticate with Google Cloud
         uses: google-github-actions/auth@v2
         with:

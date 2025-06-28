@@ -1,9 +1,9 @@
 const sharp = require('sharp');
 
 // Input files
-const IMAGE_PATH = 'temp-image.jpg';
-const WATERMARK_PATH = 'temp-watermark.jpg';
-const OUTPUT_PATH = 'output.jpg';
+const IMAGE_PATH = 'image/2025/Blank.jpg';
+const WATERMARK_PATH = 'image/iCARES.jpg';
+const OUTPUT_PATH = 'image/2025/watermarked.jpg';
 
 (async () => {
   try {

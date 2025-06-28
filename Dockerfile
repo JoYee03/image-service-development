@@ -25,7 +25,6 @@ RUN apt-get update && \
 # Copy Go binary and other files
 COPY --from=builder /app/image-service .
 COPY watermark.js .
-COPY firebase-service-account.json .
 
 # Set port
 ENV PORT=8080

@@ -95,14 +95,14 @@ Cloud Run URL:
 ### 1. Build and Submit
 
 ```bash
-gcloud builds submit --tag gcr.io/YOUR_PROJECT_ID/image-service
+gcloud builds submit --tag gcr.io/image-service-development/image-service
 ```
 
 ### 2. Deploy to Cloud Run
 
 ```bash
 gcloud run deploy image-service-development \
-  --image gcr.io/YOUR_PROJECT_ID/image-service \
+  --image gcr.io/image-service-development/image-service \
   --platform managed \
   --region asia-southeast1 \
   --allow-unauthenticated

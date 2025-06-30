@@ -27,6 +27,7 @@ jobs:
       - name: Deploy to Cloud Run
         run: |
           gcloud run deploy image-service-development \
+            --project=celestial-geode-464418-p8 \
             --source . \
             --region asia-southeast1 \
             --allow-unauthenticated \

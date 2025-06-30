@@ -10,7 +10,7 @@ This project implements an image upload and watermarking API using the Go progra
 - Apply a watermark to an existing image via `/testWatermarkImage`
 - Return public Firebase Storage URLs for uploaded and processed images
 - Uses Google Cloud Run for deployment
-- Firebase Storage is used for hosting image files
+- Firebase Storage is used to store uploaded and watermarked images in the `images/` and `images/watermarked/` folders
 
 ---
 

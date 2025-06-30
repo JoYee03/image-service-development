@@ -1,167 +1,177 @@
-# iCARES Image Service API
+# iCARES Internship Test – Image Upload & Watermarking API
 
-A Go + Node.js Cloud Run API that supports image uploading and watermarking via Sharp and Firebase Cloud Storage.
-
----
-
-## Requirements
-
-* Go 1.21+
-* Node.js (for `sharp`)
-* Firebase project with Cloud Storage
-* Firebase Admin SDK JSON key
+This project implements an image upload and watermarking API using the Go programming language. Images are uploaded to Firebase Storage and can be watermarked using an overlay function.
 
 ---
 
-## Folder Structure
+## Features
+
+- Upload base64-encoded images to Firebase Storage via `/testImageUpload`
+- Apply a watermark to an existing image via `/testWatermarkImage`
+- Return public Firebase Storage URLs for uploaded and processed images
+- Uses Google Cloud Run for deployment
+- Firebase Storage is used for hosting image files
+
+---
+
+## Tech Stack
+
+| Component       | Technology                          |
+|----------------|--------------------------------------|
+| Language        | Go (Golang)                         |
+| Deployment      | Google Cloud Run                    |
+| Storage         | Firebase Storage                    |
+| Automation      | PowerShell scripts (`upload.ps1`, `watermark.ps1`) |
+
+---
+
+## Deployment Instructions
+
+This project is deployed using **Google Cloud Run** with automatic containerization via `--source`.
+
+### Prerequisites
+
+- Google Cloud SDK installed (`gcloud`)
+- Firebase project with billing enabled
+- Firebase Storage enabled
+- Service account JSON key (`firebase-service-account.json`)
+
+### Environment Variables
+
+Set the following environment variables (via `.env`, manually, or Cloud Run):
 
 ```
-iCARES/
+FIREBASE_BUCKET=celestial-geode-464418-p8.appspot.com
+PORT=8080
+GOOGLE_APPLICATION_CREDENTIALS=firebase-service-account.json
+```
+
+### How to Get a Firebase Service Account Key
+
+1. Go to [Firebase Console](https://console.firebase.google.com/)
+2. Select your project (e.g., `image-service-development`)
+3. Click the gear icon → **Project settings**
+4. Open the **Service accounts** tab
+5. Click **Generate new private key**
+6. Save the downloaded file as `firebase-service-account.json` in the project root
+
+Ensure that this key has permission to access Firebase Storage (default editor role works).
+
+---
+
+### Note About Firebase Bucket
+
+The `FIREBASE_BUCKET` environment variable in this project is set to:
+
+```
+celestial-geode-464418-p8.appspot.com
+```
+
+This is the default Firebase Storage bucket for my project. If you are testing in a different Firebase project, replace this value with **your own bucket name**, which usually follows the format:
+
+```
+<your-project-id>.appspot.com
+```
+
+### Deployment Command
+
+Use the following command in Command Prompt or PowerShell:
+
+```cmd
+gcloud run deploy image-service-development --source . --region asia-southeast1 --allow-unauthenticated --update-env-vars FIREBASE_BUCKET=celestial-geode-464418-p8.appspot.com
+```
+
+---
+
+## API Endpoints
+
+### 1. Image Upload
+
+**POST** `/testImageUpload`
+
+**Request Body:**
+
+```json
+{
+  "content": "<base64-encoded-image>",
+  "type": "image/jpeg",
+  "filename": "test.jpg"
+}
+```
+
+**Response:**
+
+```json
+{
+  "path": "images/test.jpg",
+  "public_url": "https://firebasestorage.googleapis.com/...",
+  "success": true
+}
+```
+
+**Example:**
+
+```powershell
+.\upload.ps1 -Base64Path "test.txt" -Filename "test.jpg"
+```
+
+---
+
+### 2. Watermarking
+
+**POST** `/testWatermarkImage`
+
+**Request Body:**
+
+```json
+{
+  "image_path": "images/test.jpg",
+  "watermark_path": "images/watermark.jpg"
+}
+```
+
+**Response:**
+
+```json
+{
+  "watermarked_path": "https://firebasestorage.googleapis.com/...",
+  "success": true
+}
+```
+
+**Example:**
+
+```powershell
+.\watermark.ps1 -ImagePath "images/test.jpg" -WatermarkPath "images/watermark.jpg"
+```
+
+---
+
+## Project Structure
+
+```
+.
 ├── main.go
-├── watermark.js
+├── handlers/
+│   ├── upload.go
+│   ├── watermark.go
+│   └── helpers.go
+├── storage/
+│   └── storage.go
+├── upload.ps1
+├── watermark.ps1
 ├── firebase-service-account.json
-├── Dockerfile
-├── upload-image.ps1
-├── upload-image2.ps1
-├── watermark-image.ps1
-├── blank_base64.txt
-├── icares_base64.txt
-├── go.mod
-├── go.sum
+└── go.mod
+└── go.sum
+└── .env
+└── README.md
 ```
 
 ---
 
-## Local Setup
+## Notes
 
-### 1. Install Go & Node
-
-Install [Go](https://go.dev/dl) and [Node.js](https://nodejs.org/) (v18+).
-Install `sharp` using:
-
-```bash
-npm install sharp
-```
-
-### 2. Add Firebase Admin SDK JSON
-
-* Go to **Firebase Console** → **Project Settings** → **Service accounts**
-* Click **Generate new private key**
-* Save it as: `firebase-service-account.json`
-
----
-
-##  Run Locally
-
-```bash
-go run main.go
-```
-
-Server runs on: `http://localhost:8080`
-
----
-
-## Test with PowerShell
-
-1. **Upload image + watermark**
-
-```powershell
-.\upload-image.ps1
-.\upload-image2.ps1
-```
-
-2. **Apply watermark**
-
-```powershell
-.\watermark-image.ps1
-```
-
----
-
-## API Endpoints (Cloud Run)
-
-| Endpoint              | Method | Description                           |
-| --------------------- | ------ | ------------------------------------- |
-| `/testImageUpload`    | POST   | Uploads an image to Firebase Storage  |
-| `/testWatermarkImage` | POST   | Applies watermark over uploaded image |
-
-Cloud Run URL:
-`https://image-service-development-735683043266.asia-southeast1.run.app`
-
----
-
-## Docker Deployment (Cloud Run)
-
-### 1. Build and Submit
-
-```bash
-gcloud builds submit --tag gcr.io/image-service-development/image-service
-```
-
-### 2. Deploy to Cloud Run
-
-```bash
-gcloud run deploy image-service-development \
-  --image gcr.io/image-service-development/image-service \
-  --platform managed \
-  --region asia-southeast1 \
-  --allow-unauthenticated
-```
-
----
-
-## GitHub Actions Deployment
-
-Automatically deploy when a Git tag is pushed.
-
-### `.github/workflows/deploy.yml`
-
-```yaml
-name: Deploy to Cloud Run on Tag
-
-on:
-  push:
-    tags:
-      - 'v*'
-
-jobs:
-  deploy:
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Set up Google Cloud CLI
-        uses: google-github-actions/setup-gcloud@v2
-        with:
-          credentials: ${{ secrets.GCP_SA_KEY }}
-          project_id: ${{ secrets.GCP_PROJECT_ID }}
-          export_default_credentials: true
-
-      - name: Build and push Docker image
-        run: |
-          gcloud builds submit --tag gcr.io/${{ secrets.GCP_PROJECT_ID }}/image-service
-
-      - name: Deploy to Cloud Run
-        run: |
-          gcloud run deploy image-service-development \
-            --image gcr.io/${{ secrets.GCP_PROJECT_ID }}/image-service \
-            --platform managed \
-            --region asia-southeast1 \
-            --allow-unauthenticated
-```
-
-### Secrets to Add
-
-| Secret Name      | Description                                                                             |
-| ---------------- | --------------------------------------------------------------------------------------- |
-| `GCP_SA_KEY`     | Contents of your service account JSON (base64-encoded or plain string in GitHub Secret) |
-| `GCP_PROJECT_ID` | Your Google Cloud Project ID                                                            |
-
-### Trigger Deployment
-
-```bash
-git tag v1.0.0
-git push origin v1.0.0
-```
+- Go was chosen for this project even though Firebase Functions do not natively support Go.
+- Google Cloud Run was used to deploy the Go server in a serverless environment.
+- Firebase Storage is integrated via the official Google Cloud Storage SDK.
+- All uploaded and processed images are publicly accessible via signed URLs returned in API responses.

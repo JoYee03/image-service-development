@@ -1,41 +1,30 @@
-name: Deploy to Cloud Run on Tag
+name: Deploy to Cloud Run
 
 on:
   push:
-    tags:
-      - 'v*'
+    branches:
+      - main
 
 jobs:
   deploy:
+    name: Build and Deploy to Cloud Run
     runs-on: ubuntu-latest
 
-    permissions:
-      contents: 'read'
-      id-token: 'write'
-
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - name: Checkout source code
+        uses: actions/checkout@v3
 
-      - name: Create firebase-service-account.json
-        run: echo "${{ secrets.GCP_SA_KEY }}" > firebase-service-account.json
-
-      - name: Authenticate with Google Cloud
-        uses: google-github-actions/auth@v2
+      - name: Set up Google Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
         with:
-          credentials_json: '${{ secrets.GCP_SA_KEY }}'
-
-      - name: Set up Google Cloud CLI
-        uses: google-github-actions/setup-gcloud@v1
-
-      - name: Build and push Docker image
-        run: |
-          gcloud builds submit --tag gcr.io/${{ secrets.GCP_PROJECT_ID }}/image-service
+          project_id: celestial-geode-464418-p8
+          service_account_key: ${{ secrets.GCP_SA_KEY }}
+          export_default_credentials: true
 
       - name: Deploy to Cloud Run
         run: |
           gcloud run deploy image-service-development \
-            --image gcr.io/${{ secrets.GCP_PROJECT_ID }}/image-service \
-            --platform managed \
+            --source . \
             --region asia-southeast1 \
-            --allow-unauthenticated
+            --allow-unauthenticated \
+            --update-env-vars FIREBASE_BUCKET=celestial-geode-464418-p8.appspot.com

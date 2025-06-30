@@ -1,6 +1,0 @@
-{
-  "functions": {
-    "runtime": "go124",
-    "source": "functions"
-  }
-}
